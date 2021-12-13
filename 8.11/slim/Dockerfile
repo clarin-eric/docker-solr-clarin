@@ -1,8 +1,33 @@
+# Adapted from official Solr image!
 
-FROM openjdk:11-jre-slim
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk11-2.0.4
 
-LABEL maintainer="The Apache Lucene/Solr Project"
-LABEL repository="https://github.com/docker-solr/docker-solr"
+# Original header
+#FROM openjdk:11-jre-slim
+#
+#LABEL maintainer="The Apache Lucene/Solr Project"
+#LABEL repository="https://github.com/docker-solr/docker-solr"
+
+ENV GOSU_VERSION 1.11
+ENV GOSU_KEY B42F6819007F00F88E364FD4036A9C25BF357DD4
+
+RUN apk add --no-cache \
+        lsof=4.94.0-r0 \
+        gnupg=2.2.31-r0 \
+        procps=3.3.16-r0 \
+        tar=1.34-r0 \
+        bash=5.1.0-r0 \
+        tini=0.19.0-r0 \
+        netcat-openbsd=1.130-r2 \
+        wget=1.21.1-r1
+
+# hadolint ignore=DL3018
+RUN apk add --no-cache ca-certificates \
+  && update-ca-certificates
+
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+# --------------- BEGIN adapted from official Solr image ---------------------------------
 
 ARG SOLR_VERSION="8.11.0"
 ARG SOLR_SHA512="fa766775a70ee636792149baa20a541fa043a7579d499324072965f0c241600b75afe940d2b6c90cafb4b14b9c5f1c2a7bd0844c7d198ba9a36f09e427262dd2"
@@ -14,10 +39,12 @@ ARG SOLR_DOWNLOAD_URL
 #   docker build -t mine --build-arg SOLR_DOWNLOAD_SERVER=http://www-eu.apache.org/dist/lucene/solr .
 ARG SOLR_DOWNLOAD_SERVER
 
-RUN set -ex; \
-  apt-get update; \
-  apt-get -y install acl dirmngr gpg lsof procps wget netcat gosu tini; \
-  rm -rf /var/lib/apt/lists/*; \
+#RUN set -ex; \
+#  apt-get update; \
+#  apt-get -y install acl dirmngr gpg lsof procps wget netcat gosu tini; \
+#  rm -rf /var/lib/apt/lists/*; \
+
+RUN \
   cd /usr/local/bin; wget -nv https://github.com/apangin/jattach/releases/download/v1.5/jattach; chmod 755 jattach; \
   echo >jattach.sha512 "d8eedbb3e192a8596c08efedff99b9acf1075331e1747107c07cdb1718db2abe259ef168109e46bd4cf80d47d43028ff469f95e6ddcbdda4d7ffa73a20e852f9  jattach"; \
   sha512sum -c jattach.sha512; rm jattach.sha512
@@ -36,16 +63,15 @@ ENV SOLR_USER="solr" \
     SOLR_LOGS_DIR=/var/solr/logs \
     LOG4J_PROPS=/var/solr/log4j2.xml
 
-RUN set -ex; \
-  groupadd -r --gid "$SOLR_GID" "$SOLR_GROUP"; \
-  useradd -r --uid "$SOLR_UID" --gid "$SOLR_GID" "$SOLR_USER"
+RUN addgroup -S -g $SOLR_GID $SOLR_GROUP && \
+    adduser -S -u $SOLR_UID -G $SOLR_GROUP $SOLR_USER
 
 RUN set -ex; \
   export GNUPGHOME="/tmp/gnupg_home"; \
   mkdir -p "$GNUPGHOME"; \
   chmod 700 "$GNUPGHOME"; \
   echo "disable-ipv6" >> "$GNUPGHOME/dirmngr.conf"; \
-  for key in $SOLR_KEYS; do \
+  for key in $SOLR_KEYS $GOSU_KEY; do \
     found=''; \
     for server in \
       ha.pool.sks-keyservers.net \
@@ -63,6 +89,14 @@ RUN set -ex; \
 
 RUN set -ex; \
   export GNUPGHOME="/tmp/gnupg_home"; \
+  apkArch="$(apk --print-arch | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')"; \
+  wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$apkArch"; \
+  wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$apkArch.asc"; \
+  gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+  rm /usr/local/bin/gosu.asc; \
+  chmod +x /usr/local/bin/gosu; \
+  gosu nobody true; \
+  tini --version; \
   MAX_REDIRECTS=1; \
   if [ -n "$SOLR_DOWNLOAD_URL" ]; then \
     # If a custom URL is defined, we download from non-ASF mirror URL and allow more redirects and skip GPG step
@@ -96,6 +130,7 @@ RUN set -ex; \
   find "/opt/solr-$SOLR_VERSION" -type d -print0 | xargs -0 chmod 0755; \
   find "/opt/solr-$SOLR_VERSION" -type f -print0 | xargs -0 chmod 0644; \
   chmod -R 0755 "/opt/solr-$SOLR_VERSION/bin" "/opt/solr-$SOLR_VERSION/contrib/prometheus-exporter/bin/solr-exporter" /opt/solr-$SOLR_VERSION/server/scripts/cloud-scripts; \
+  mkdir -p /etc/default; \
   cp /opt/solr/bin/solr.in.sh /etc/default/solr.in.sh; \
   mv /opt/solr/bin/solr.in.sh /opt/solr/bin/solr.in.sh.orig; \
   mv /opt/solr/bin/solr.in.cmd /opt/solr/bin/solr.in.cmd.orig; \
@@ -118,7 +153,27 @@ COPY --chown=0:0 scripts /opt/docker-solr/scripts
 VOLUME /var/solr
 EXPOSE 8983
 WORKDIR /opt/solr
-USER $SOLR_USER
+# --------------- END adapted from official Solr image -----------------------------------
 
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["solr-foreground"]
+# --------------- BEGIN removed from official Solr image ---------------------------------
+#USER $SOLR_USER
+#
+#ENTRYPOINT ["docker-entrypoint.sh"]
+#CMD ["solr-foreground"]
+# --------------- END removed from official Solr image -----------------------------------
+
+# --------------- BEGIN added on top of official Solr image ------------------------------
+COPY clarin/init.sh /init/solr-init.sh
+COPY clarin/supervisor/solr.conf /etc/supervisor/conf.d/solr.conf
+COPY clarin/fluentd/solr.conf /etc/fluentd/conf.d/solr.conf
+COPY scripts /opt/docker-solr/scripts
+COPY clarin/solr-healthcheck.bash /etc/healthcheck.d/solr-healthcheck.bash
+
+RUN chown $SOLR_USER:$SOLR_GROUP /opt/docker-solr/scripts \
+ && chmod u+x '/etc/healthcheck.d/solr-healthcheck.bash'
+
+ENV SOLR_HOME=/solr-home \
+SOLR_DATA_HOME=/solr-data
+
+VOLUME ["/solr-home", "/solr-data"]
+# --------------- END added on top of official Solr image --------------------------------
