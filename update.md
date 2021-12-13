@@ -2,7 +2,7 @@
 
 ## Project introduction
 
-This project provides Docker users with a simple way to run [Apache Solr](https://lucene.apache.org/solr/),
+This project provides Docker users with a simple way to run [Apache Solr](https://solr.apache.org/),
 by maintaining the 'solr' image in the [Docker Official Images](https://github.com/docker-library/official-images).
 To do this, the project uses a separate [docker-solr/docker-solr](https://github.com/docker-solr/docker-solr) Github repository,
 which maintains Dockerfiles and creates a [manifest](https://github.com/docker-library/official-images/blob/master/library/solr) which the official images project then incorporates into their repository, which in turn is used by their infrastructure to build the actual images.
@@ -57,7 +57,7 @@ This is arguably too simplistic when you consider compatibility with user-provid
 
 ## Build and release overview
 
-When a new Solr release is announced on the [Solr User mailing list](https://lucene.apache.org/solr/community.html#mailing-lists-irc), we aim to create a docker-solr release within a week.
+When a new Solr release is announced on the [Solr User mailing list](https://solr.apache.org/community.html#mailing-lists-irc), we aim to create a docker-solr release within a week.
 
 To create a new release, we follow several steps:
 
@@ -263,7 +263,10 @@ git push
 Next we create the [manifest](https://github.com/docker-solr/official-images/blob/master/library/solr) for the Official Images repository.
 Essentially this is the build artifact our repsitory created. It refers ito the commits in our repository that we pushed previously.
 
-Still in our repository, run:
+First, ensure that the *master* branch of docker/solr is up to date with the remote which ought to have the upgrade now.
+You may have to switch from a feature-branch for a PR to master and then `git pull`.
+
+Then in our repository, run:
 
 ```bash
 git rev-parse HEAD
