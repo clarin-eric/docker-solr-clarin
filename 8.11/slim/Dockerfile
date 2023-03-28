@@ -1,6 +1,6 @@
 # Adapted from official Solr image!
 
-FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17-1.1.0
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17-1.2.6
 
 # Original header
 #FROM openjdk:11-jre-slim
@@ -12,14 +12,14 @@ ENV GOSU_VERSION 1.11
 ENV GOSU_KEY B42F6819007F00F88E364FD4036A9C25BF357DD4
 
 RUN apk add --no-cache \
-        lsof=4.94.0-r0 \
-        gnupg=2.2.31-r2 \
-        procps=3.3.17-r0 \
-        tar=1.34-r0 \
-        bash=5.1.16-r0 \
-        tini=0.19.0-r0 \
-        netcat-openbsd=1.130-r3 \
-        wget=1.21.2-r2
+        lsof=4.96.4-r0 \
+        gnupg=2.2.40-r0 \
+        procps=3.3.17-r2 \
+        tar=1.34-r2 \
+        bash=5.2.15-r0 \
+        tini=0.19.0-r1 \
+        netcat-openbsd=1.130-r4 \
+        wget=1.21.3-r2
 
 # hadolint ignore=DL3018
 RUN apk add --no-cache ca-certificates \
