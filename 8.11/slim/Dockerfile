@@ -1,6 +1,6 @@
 # Adapted from official Solr image!
 
-FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17_jre-1.3.3
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17_jre-1.3.11
 
 # Original header
 #FROM openjdk:11-jre-slim
@@ -16,7 +16,7 @@ RUN apk add --no-cache \
         gnupg=2.4.3-r0 \
         lsof=4.98.0-r2 \
         netcat-openbsd=1.219-r1 \
-        procps-ng=4.0.3-r1 \
+        procps-ng=4.0.4-r0 \
         tar=1.34-r3 \
         tini=0.19.0-r1 \
         wget=1.21.4-r0
