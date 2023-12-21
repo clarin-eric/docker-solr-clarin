@@ -1,6 +1,6 @@
 # Adapted from official Solr image!
 
-FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17_jre-1.3.11
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17_jre-1.3.12
 
 # Original header
 #FROM openjdk:11-jre-slim
