@@ -1,6 +1,6 @@
 # Adapted from official Solr image!
 
-FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17_jre-1.3.12
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk17_jre-1.3.17
 
 # Original header
 #FROM openjdk:11-jre-slim
@@ -8,17 +8,17 @@ FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk1
 #LABEL maintainer="The Apache Lucene/Solr Project"
 #LABEL repository="https://github.com/docker-solr/docker-solr"
 
-ENV GOSU_VERSION 1.11
+ENV GOSU_VERSION 1.17
 ENV GOSU_KEY B42F6819007F00F88E364FD4036A9C25BF357DD4
 
 RUN apk add --no-cache \
-        bash=5.2.15-r5 \
-        gnupg=2.4.3-r0 \
-        lsof=4.98.0-r2 \
-        netcat-openbsd=1.219-r1 \
+        bash=5.2.21-r0 \
+        gnupg=2.4.4-r0 \
+        lsof=4.99.0-r0 \
+        netcat-openbsd=1.226-r0 \
         procps-ng=4.0.4-r0 \
-        tar=1.34-r3 \
-        tini=0.19.0-r1 \
+        tar=1.35-r2 \
+        tini=0.19.0-r2 \
         wget=1.21.4-r0
 
 # hadolint ignore=DL3018
@@ -29,9 +29,10 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # --------------- BEGIN adapted from official Solr image ---------------------------------
 
-ARG SOLR_VERSION="8.11.2"
-ARG SOLR_SHA512="22fedcc0090eda72c3c5a5ea769c93adaf7d92c5c4479993f009ef0b9d42de5bd2ed1e0565ca01f3428587d8a3836286aa3017aab157050f2bd5bc3482fdebaa"
-ARG SOLR_KEYS="86EDB9C33B8517228E88A8F93E48C0C6EF362B9E"
+ARG SOLR_VERSION="8.11.3"
+ARG SOLR_SHA512="10f09b163bd9c31b2a8fdf889cf624114648e76881d69a4c096d473272c47b3cbe37ec9f9bd1980fd90967352c4052477065e165127eccb2c49a60c8d9860afc"
+#ARG SOLR_KEYS="86EDB9C33B8517228E88A8F93E48C0C6EF362B9E"
+ARG SOLR_KEYS="50E3EE1C91C7E0CB4DFB007B369424FC98F3F6EC"
 # If specified, this will override SOLR_DOWNLOAD_SERVER and all ASF mirrors. Typically used downstream for custom builds
 ARG SOLR_DOWNLOAD_URL
 
@@ -74,6 +75,7 @@ RUN set -ex; \
   for key in $SOLR_KEYS $GOSU_KEY; do \
     found=''; \
     for server in \
+      hkps://keys.openpgp.org \
       ha.pool.sks-keyservers.net \
       hkp://keyserver.ubuntu.com:80 \
       hkp://p80.pool.sks-keyservers.net:80 \
