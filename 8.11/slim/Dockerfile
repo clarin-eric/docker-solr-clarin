@@ -8,8 +8,8 @@ FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk2
 #LABEL maintainer="The Apache Lucene/Solr Project"
 #LABEL repository="https://github.com/docker-solr/docker-solr"
 
-ENV GOSU_VERSION 1.17
-ENV GOSU_KEY B42F6819007F00F88E364FD4036A9C25BF357DD4
+ENV GOSU_VERSION=1.17
+ENV GOSU_KEY=B42F6819007F00F88E364FD4036A9C25BF357DD4
 
 RUN apk add --no-cache \
         bash=5.2.21-r0 \
