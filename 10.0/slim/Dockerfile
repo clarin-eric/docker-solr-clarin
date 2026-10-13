@@ -13,8 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Adapted from the official Solr image
+# Source: https://github.com/apache/solr-docker/blob/884b2e669217/10.0-slim/Dockerfile
+#         Apache Solr release 10.0.0
 
-FROM eclipse-temurin:25-jre-noble
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk21_jre-1.3.17
+
+ARG GNUPG_VERSION=2.4.9-r1
+ARG LSOF_VERSION=4.99.6-r0
+ARG NETCAT_VERSION=1.234.1-r0
+ARG PROCPS_VERSION=4.0.6-r0
+ARG TAR_VERSION=1.35-r5
+ARG WGET_VERSION=1.25.0-r3
+
+# --------------- BEGIN adapted from official Solr image -----------------------------------
 
 ARG SOLR_VERSION="10.0.0"
 # empty for the full distribution, "-slim" for the slim distribution
@@ -27,10 +39,14 @@ ARG SOLR_KEYS="EDF961FF03E647F9CA8A9C2C758051CCA3A13A7F"
 # This server must support downloading at: ${SOLR_DOWNLOAD_SERVER}/${SOLR_VERSION}/solr-${SOLR_VERSION}(-slim).tgz(.asc)
 ARG SOLR_DOWNLOAD_SERVER="https://www.apache.org/dyn/closer.lua?action=download&filename=/solr/solr"
 
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+
 RUN set -ex; \
-  apt-get update; \
-  apt-get -y --no-install-recommends install wget gpg gnupg dirmngr; \
-  rm -rf /var/lib/apt/lists/*; \
+  # apt-get update; \
+  # apt-get -y --no-install-recommends install wget gpg gnupg dirmngr; \
+  # rm -rf /var/lib/apt/lists/*; \
+  apk add --no-cache --virtual .solr-fetch-deps \
+    "gnupg=${GNUPG_VERSION}" "wget=${WGET_VERSION}" "tar=${TAR_VERSION}"; \
   export SOLR_BINARY="solr-$SOLR_VERSION$SOLR_DIST.tgz"; \
   MAX_REDIRECTS=3; \
   case "${SOLR_DOWNLOAD_SERVER}" in \
@@ -57,6 +73,8 @@ RUN set -ex; \
         gpg --batch --import --key-origin 'url,https://downloads.apache.org/solr/KEYS'; \
       # Save just the release key
       release_keys="$(gpg --batch --export -a ${SOLR_KEYS})"; \
+      # Delete the agents still running before rm -rf below - some sockets might still be open
+      gpgconf --kill all; \
       rm -rf "$GNUPGHOME"/*; \
       echo "${release_keys}" | gpg --batch --import; \
     fi; \
@@ -73,7 +91,7 @@ RUN set -ex; \
   fi; \
   tar -C /opt --extract --preserve-permissions --file "/opt/$SOLR_BINARY"; \
   rm "/opt/$SOLR_BINARY"*; \
-  apt-get -y remove gpg dirmngr && apt-get -y autoremove;
+  apk del .solr-fetch-deps;
 
 
 
@@ -99,9 +117,11 @@ ENV SOLR_USER="solr" \
     SOLR_HOST_BIND="0.0.0.0" \
     SOLR_ZOOKEEPER_EMBEDDED_HOST="0.0.0.0"
 
-RUN set -ex; \
-  groupadd -r --gid "$SOLR_GID" "$SOLR_GROUP"; \
-  useradd -r --uid "$SOLR_UID" --gid "$SOLR_GID" "$SOLR_USER"
+# RUN set -ex; \
+#   groupadd -r --gid "$SOLR_GID" "$SOLR_GROUP"; \
+#   useradd -r --uid "$SOLR_UID" --gid "$SOLR_GID" "$SOLR_USER"
+RUN addgroup -S -g "$SOLR_GID" "$SOLR_GROUP" && \
+    adduser -S -u "$SOLR_UID" -G "$SOLR_GROUP" "$SOLR_USER"
 
 # add symlink to /opt/solr, remove what we don't want.
 # Remove the Dockerfile because it might not represent the dockerfile that was used to generate the image.
@@ -111,6 +131,7 @@ RUN set -ex; \
 
 RUN set -ex; \
   mkdir -p /opt/solr/server/solr/lib /docker-entrypoint-initdb.d; \
+  mkdir -p /etc/default; \
   cp /opt/solr/bin/solr.in.sh /etc/default/solr.in.sh; \
   mv /opt/solr/bin/solr.in.sh /opt/solr/bin/solr.in.sh.orig; \
   mv /opt/solr/bin/solr.in.cmd /opt/solr/bin/solr.in.cmd.orig; \
@@ -118,15 +139,37 @@ RUN set -ex; \
   mkdir -p -m0770 /var/solr; \
   chown -R "$SOLR_USER:0" /var/solr;
 
-RUN set -ex; \
-    apt-get update; \
-    apt-get -y --no-install-recommends install curl acl lsof procps wget netcat-openbsd gosu tini jattach; \
-    rm -rf /var/lib/apt/lists/*;
+RUN apk add --no-cache \
+        "lsof=${LSOF_VERSION}" \
+        "netcat-openbsd=${NETCAT_VERSION}" \
+        "procps-ng=${PROCPS_VERSION}"
 
 VOLUME /var/solr
 EXPOSE 8983
 WORKDIR /opt/solr
-USER $SOLR_UID
+# --------------- END adapted from official Solr image -----------------------------------
 
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["solr-foreground"]
+# --------------- BEGIN removed from official Solr image ---------------------------------
+#USER $SOLR_UID
+#
+#ENTRYPOINT ["docker-entrypoint.sh"]
+#CMD ["solr-foreground"]
+# --------------- END removed from official Solr image -----------------------------------
+
+# --------------- BEGIN added on top of official Solr image ------------------------------
+COPY clarin/init.sh /init/solr-init.sh
+COPY clarin/supervisor/solr.conf /etc/supervisor/conf.d/solr.conf
+COPY clarin/fluentd/solr.conf /etc/fluentd/conf.d/solr.conf
+COPY clarin/solr-healthcheck.bash /etc/healthcheck.d/solr-healthcheck.bash
+
+RUN chmod u+x /etc/healthcheck.d/solr-healthcheck.bash
+
+ENV SOLR_HOME=/solr-home \
+    SOLR_DATA_HOME=/solr-data
+
+RUN cp -a /opt/solr/server/resources/log4j2.xml /var/solr/log4j2.xml \
+ && chown "$SOLR_USER:0" /var/solr/log4j2.xml
+
+VOLUME ["/solr-home", "/solr-data"]
+# --------------- END added on top of official Solr image --------------------------------
+
