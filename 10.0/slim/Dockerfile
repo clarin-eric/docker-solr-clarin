@@ -16,9 +16,11 @@
 # Adapted from the official Solr image
 # Source: https://github.com/apache/solr-docker/blob/884b2e669217/10.0-slim/Dockerfile
 #         Apache Solr release 10.0.0
+# Adaptation done by following the diffs for 8.11
 
 FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk21_jre-1.3.17
 
+# pinned Alpine package versions
 ARG GNUPG_VERSION=2.4.9-r1
 ARG LSOF_VERSION=4.99.6-r0
 ARG NETCAT_VERSION=1.234.1-r0
@@ -39,12 +41,11 @@ ARG SOLR_KEYS="EDF961FF03E647F9CA8A9C2C758051CCA3A13A7F"
 # This server must support downloading at: ${SOLR_DOWNLOAD_SERVER}/${SOLR_VERSION}/solr-${SOLR_VERSION}(-slim).tgz(.asc)
 ARG SOLR_DOWNLOAD_SERVER="https://www.apache.org/dyn/closer.lua?action=download&filename=/solr/solr"
 
+# set bash with pipefail to have failures in RUN commands fail the build
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
 RUN set -ex; \
-  # apt-get update; \
-  # apt-get -y --no-install-recommends install wget gpg gnupg dirmngr; \
-  # rm -rf /var/lib/apt/lists/*; \
+  # apk instead of apt in alpine:
   apk add --no-cache --virtual .solr-fetch-deps \
     "gnupg=${GNUPG_VERSION}" "wget=${WGET_VERSION}" "tar=${TAR_VERSION}"; \
   export SOLR_BINARY="solr-$SOLR_VERSION$SOLR_DIST.tgz"; \
@@ -73,7 +74,7 @@ RUN set -ex; \
         gpg --batch --import --key-origin 'url,https://downloads.apache.org/solr/KEYS'; \
       # Save just the release key
       release_keys="$(gpg --batch --export -a ${SOLR_KEYS})"; \
-      # Delete the agents still running before rm -rf below - some sockets might still be open
+      # stop the gpg agents before the rm -rf gnugpghome below - their open sockets make it fail
       gpgconf --kill all; \
       rm -rf "$GNUPGHOME"/*; \
       echo "${release_keys}" | gpg --batch --import; \
@@ -117,9 +118,6 @@ ENV SOLR_USER="solr" \
     SOLR_HOST_BIND="0.0.0.0" \
     SOLR_ZOOKEEPER_EMBEDDED_HOST="0.0.0.0"
 
-# RUN set -ex; \
-#   groupadd -r --gid "$SOLR_GID" "$SOLR_GROUP"; \
-#   useradd -r --uid "$SOLR_UID" --gid "$SOLR_GID" "$SOLR_USER"
 RUN addgroup -S -g "$SOLR_GID" "$SOLR_GROUP" && \
     adduser -S -u "$SOLR_UID" -G "$SOLR_GROUP" "$SOLR_USER"
 
