@@ -38,7 +38,7 @@ ARG SOLR_DOWNLOAD_URL
 
 # Override the solr download location with e.g.:
 #   docker build -t mine --build-arg SOLR_DOWNLOAD_SERVER=http://www-eu.apache.org/dist/lucene/solr .
-ARG SOLR_DOWNLOAD_SERVER
+ARG SOLR_DOWNLOAD_SERVER="https://archive.apache.org/dist/lucene/solr"
 
 #RUN set -ex; \
 #  apt-get update; \
