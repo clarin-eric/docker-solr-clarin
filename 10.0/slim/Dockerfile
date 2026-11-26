@@ -18,7 +18,7 @@
 #         Apache Solr release 10.0.0
 # Adaptation done by following the diffs for 8.11
 
-FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk21_jre-1.3.17
+FROM registry.gitlab.com/clarin-eric/docker-alpine-supervisor-java-base:openjdk21_jre-1.4.1
 
 # pinned Alpine package versions
 ARG GNUPG_VERSION=2.4.9-r1
